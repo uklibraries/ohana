@@ -1,6 +1,9 @@
 <?php
 
-require_once 'db.php';
+$db_file = dirname(__FILE__) . DIRECTORY_SEPARATOR .
+           'db.php';
+
+require_once($db_file);
 
 /* Mint a new accession number
  *
@@ -34,8 +37,8 @@ function mintAccessionNumber($type, $year, $collection)
     catch (\PDOException $ex) {
         fail($ex);
     }
-    return $result;
     unlockTables();
+    return $result;
 }
 
 /* Check the state of an accession number
@@ -81,7 +84,7 @@ function getAccessionNumberState($accessionNumber)
  */
 function recordAccessionNumber($accessionNumber)
 {
-    global $link;
+    $link = $GLOBALS['ohana_link'];
     lockTables();
     $anHash = getAccessionNumber($accessionNumber);
     if (array_key_exists('error', $anHash)) {
@@ -99,6 +102,10 @@ function recordAccessionNumber($accessionNumber)
             if (isset($yearCounter['id']) || isset($collectionCounter['id'])) {
                 $result = array(
                     'error' => 'The year and collection counters cannot be reused.',
+                    'year' => $anHash['year'],
+                    'year_count' => $anHash['year_count'],
+                    'collection' => $anHash['collection'],
+                    'collection_count' => $anHash['collection_count'],
                 );
             }
             else {
@@ -116,6 +123,7 @@ function recordAccessionNumber($accessionNumber)
     else {
         $result = array(
             'error' => 'That accession number already exists.',
+            'as_submitted' => $accessionNumber,
         );
     }
     unlockTables();
@@ -137,7 +145,7 @@ function recordAccessionNumber($accessionNumber)
  */
 function circulateAccessionNumber($accessionNumber)
 {
-    global $link;
+    $link = $GLOBALS['ohana_link'];
     lockTables();
     $anHash = getAccessionNumber($accessionNumber);
     if (array_key_exists('error', $anHash)) {
@@ -175,7 +183,7 @@ function circulateAccessionNumber($accessionNumber)
  */
 function revokeAccessionNumber($accessionNumber)
 {
-    global $link;
+    $link = $GLOBALS['ohana_link'];
     lockTables();
     $anHash = getAccessionNumber($accessionNumber);
     if (array_key_exists('error', $anHash)) {
@@ -199,7 +207,7 @@ function revokeAccessionNumber($accessionNumber)
 }
 
 function insertAccessionNumber($canonical, $as_submitted, $yearId, $collectionId, $typeId, $circulating) {
-    global $link;
+    $link = $GLOBALS['ohana_link'];
     try {
         $handle = $link->prepare(
             'INSERT INTO identifier (canonical, as_submitted, year_id, collection_id, type_id, circulating) VALUES (?, ?, ?, ?, ?, ?)'
@@ -219,7 +227,7 @@ function insertAccessionNumber($canonical, $as_submitted, $yearId, $collectionId
 
 function getAccessionNumber($accessionNumber)
 {
-    global $link;
+    $link = $GLOBALS['ohana_link'];
     try {
         $anHash = parseAccessionNumber($accessionNumber);
         if (array_key_exists('error', $anHash)) {
@@ -244,6 +252,7 @@ function getAccessionNumber($accessionNumber)
             else {
                 return array(
                     'error' => 'No such accession number exists.',
+                    'as_submitted' => $accessionNumber,
                 );
             }
         }
@@ -283,13 +292,14 @@ function parseAccessionNumber($accessionNumber)
     else {
         return array(
             'error' => 'The accession number submitted cannot be parsed.',
+            'as_submitted' => $accessionNumber,
         );
     }
 }
 
 function getYearCounter($type, $year, $value)
 {
-    global $link;
+    $link = $GLOBALS['ohana_link'];
     $result = array();
     try {
         $typeId = ensureTypeId($type);
@@ -313,6 +323,7 @@ function getYearCounter($type, $year, $value)
         else {
             $result = array(
                 'error' => 'No such year counter exists.',
+                'year' => $year,
             );
         }
     }
@@ -324,7 +335,7 @@ function getYearCounter($type, $year, $value)
 
 function getCollectionCounter($type, $collection, $value)
 {
-    global $link;
+    $link = $GLOBALS['ohana_link'];
     $result = array();
     try {
         $typeId = ensureTypeId($type);
@@ -348,6 +359,7 @@ function getCollectionCounter($type, $collection, $value)
         else {
             $result = array(
                 'error' => 'No such collection counter exists.',
+                'collection' => $collection,
             );
         }
     }
@@ -359,11 +371,13 @@ function getCollectionCounter($type, $collection, $value)
 
 function insertYearCounter($type, $year, $value)
 {
-    global $link;
+    $link = $GLOBALS['ohana_link'];
     $yearCounter = getYearCounter($type, $year, $value);
     if (isset($yearCounter['id'])) {
         $result = array(
             'error' => 'Year counters cannot be reused.',
+            'year' => $year,
+            'value' => $value,
         );
     }
     else {
@@ -388,11 +402,13 @@ function insertYearCounter($type, $year, $value)
 
 function insertCollectionCounter($type, $collection, $value)
 {
-    global $link;
+    $link = $GLOBALS['ohana_link'];
     $collectionCounter = getCollectionCounter($type, $collection, $value);
     if (isset($collectionCounter['id'])) {
         $result = array(
             'error' => 'Collection counters cannot be reused.',
+            'collection' => $collection,
+            'value' => $value,
         );
     }
     else {
@@ -417,7 +433,7 @@ function insertCollectionCounter($type, $collection, $value)
 
 function incrementYearCounter($type, $year)
 {
-    global $link;
+    $link = $GLOBALS['ohana_link'];
     try {
         $typeId = ensureTypeId($type);
         $yearId = ensureYearId($year);
@@ -444,7 +460,7 @@ function incrementYearCounter($type, $year)
 
 function incrementCollectionCounter($type, $collection)
 {
-    global $link;
+    $link = $GLOBALS['ohana_link'];
     try {
         $typeId = ensureTypeId($type);
         $collectionId = ensureCollectionId($collection);
@@ -491,7 +507,7 @@ function ensureCollectionId($collection)
 
 function ensureId($table, $column, $value)
 {
-    global $link;
+    $link = $GLOBALS['ohana_link'];
     try {
         $handle = $link->prepare(
             "SELECT id FROM $table WHERE $column = ?"
@@ -518,7 +534,7 @@ function ensureId($table, $column, $value)
 
 function lockTables()
 {
-    global $link;
+    $link = $GLOBALS['ohana_link'];
     try {
         $link->exec('LOCK TABLES `identifier` WRITE, `year` WRITE, `type` WRITE, `collection` WRITE, `year_counter` WRITE, `collection_counter` WRITE');
     }
@@ -529,7 +545,7 @@ function lockTables()
 
 function unlockTables()
 {
-    global $link;
+    $link = $GLOBALS['ohana_link'];
     try {
         $link->exec('UNLOCK TABLES');
     }
@@ -540,7 +556,7 @@ function unlockTables()
 
 function hardReset()
 {
-    global $link;
+    $link = $GLOBALS['ohana_link'];
     lockTables();
     $link->exec('DELETE FROM year_counter');
     $link->exec('DELETE FROM collection_counter');

@@ -26,3 +26,5 @@ $link = new \PDO(
         \PDO::ATTR_PERSISTENT => true,
     )
 );
+
+$GLOBALS['ohana_link'] = $link;
